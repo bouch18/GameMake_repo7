@@ -336,6 +336,41 @@ public class Chara implements Common {
         return null;
     }
 
+    /**
+     * 目の前にドアがあるか調べる
+     * @return 目の前にあるDoorEventオブジェクト
+     */
+    public DoorEvent open() {
+        int nextX = 0;
+        int nextY = 0;
+        // キャラクターの向いている方向の1歩となりの座標
+        switch (direction) {
+            case LEFT:
+                nextX = x - 1;
+                nextY = y;
+                break;
+            case RIGHT:
+                nextX = x + 1;
+                nextY = y;
+                break;
+            case UP:
+                nextX = x;
+                nextY = y - 1;
+                break;
+            case DOWN:
+                nextX = x;
+                nextY = y + 1;
+                break;
+        }
+        // その方向にドアがあるか調べる
+        Event event = map.eventCheck(nextX, nextY);
+        if (event instanceof DoorEvent) {
+            return (DoorEvent)event;
+        }
+
+        return null;
+    }
+
     private void loadImage() {
         // キャラクターのイメージをロード
         ImageIcon icon = new ImageIcon(getClass().getResource("image/chara.gif"));

@@ -13,7 +13,7 @@ import java.util.Vector;
 import javax.swing.ImageIcon;
 
 /*
- * Created on 2005/10/10
+ * Created on 2006/5/5
  *
  */
 
@@ -43,7 +43,19 @@ public class Map implements Common {
     // メインパネルへの参照
     private MainPanel panel;
 
-    public Map(String mapFile, String eventFile, MainPanel panel) {
+    // BGM番号
+    private int bgmNo;
+
+    /**
+     * コンストラクタ
+     * @param mapFile マップファイル名
+     * @param eventFile イベントファイル名
+     * @param bgmNo BGM番号
+     * @param panel パネルへの参照
+     */
+    public Map(String mapFile, String eventFile, int bgmNo, MainPanel panel) {
+        this.bgmNo = bgmNo;
+
         // マップをロード
         load(mapFile);
 
@@ -109,8 +121,8 @@ public class Map implements Common {
      * @return (x,y)にぶつかるものがあったらtrueを返す。
      */
     public boolean isHit(int x, int y) {
-        // (x,y)に壁か玉座があったらぶつかる
-        if (map[y][x] == 1 || map[y][x] == 2) {
+        // (x,y)に壁か玉座か海かカウンターがあったらぶつかる
+        if (map[y][x] == 1 || map[y][x] == 2 || map[y][x] == 5 || map[y][x] == 19) {
             return true;
         }
 
@@ -140,6 +152,14 @@ public class Map implements Common {
      */
     public void addChara(Chara chara) {
         charas.add(chara);
+    }
+
+    /**
+     * キャラクターをこのマップから削除する
+     * @param chara キャラクター
+     */
+    public void removeChara(Chara chara) {
+        charas.remove(chara);
     }
 
     /**
@@ -275,8 +295,10 @@ public class Map implements Common {
                     makeCharacter(st);
                 } else if (eventType.equals("TREASURE")) {  // 宝箱イベント
                     makeTreasure(st);
-                } else if (eventType.equals("DOOR")) {  // とびらイベント
+                } else if (eventType.equals("DOOR")) {  // ドアイベント
                     makeDoor(st);
+                } else if (eventType.equals("MOVE")) {  // 移動イベント
+                    makeMove(st);
                 }
             }
         } catch (Exception e) {
@@ -342,6 +364,27 @@ public class Map implements Common {
     }
 
     /**
+     * 移動イベントを作成
+     */
+    private void makeMove(StringTokenizer st) {
+        // 移動イベントの座標
+        int x = Integer.parseInt(st.nextToken());
+        int y = Integer.parseInt(st.nextToken());
+        // チップ番号
+        int chipNo = Integer.parseInt(st.nextToken());
+        // 移動先のマップ番号
+        int destMapNo = Integer.parseInt(st.nextToken());
+        // 移動先のX座標
+        int destX = Integer.parseInt(st.nextToken());
+        // 移動先のY座標
+        int destY = Integer.parseInt(st.nextToken());
+        // 移動イベントを作成
+        MoveEvent m = new MoveEvent(x, y, chipNo, destMapNo, destX, destY);
+        // 移動イベントを登録
+        events.add(m);
+    }
+
+    /**
      * マップをコンソールに表示。デバッグ用。
      */
     public void show() {
@@ -351,5 +394,13 @@ public class Map implements Common {
             }
             System.out.println();
         }
+    }
+
+    /**
+     * このマップのBGM番号を返す
+     * @return BGM番号
+     */
+    public int getBgmNo() {
+        return bgmNo;
     }
 }

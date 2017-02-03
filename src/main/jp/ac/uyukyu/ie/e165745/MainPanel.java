@@ -8,13 +8,16 @@ import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.IOException;
 import java.util.Random;
 import java.util.Vector;
 
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MidiUnavailableException;
 import javax.swing.JPanel;
 
 /*
- * Created on 2005/10/09
+ * Created on 2006/5/5
  *
  */
 
@@ -28,7 +31,10 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
     public static final int HEIGHT = 480;
 
     // マップ
-    private Map map;
+    private Map[] maps;
+    // 現在のマップ番号
+    private int mapNo;
+
     // 勇者
     private Chara hero;
 
@@ -51,6 +57,10 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
     private static Rectangle WND_RECT =
             new Rectangle(62, 324, 356, 140);
 
+    // BGM名（from TAM Music Factory: http://www.tam-music.com/）
+    // BGM番号は0, 1, ・・・というように割り当てられる
+    private static final String[] bgmNames = {"tamhe07.mid", "tamsu02.mid"};
+
     public MainPanel() {
         // パネルの推奨サイズを設定
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -66,18 +76,31 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
         downKey = new ActionKey();
         spaceKey = new ActionKey(ActionKey.DETECT_INITIAL_PRESS_ONLY);
 
-        // マップを作成
-        map = new Map("map/map.dat", "event/event.dat", this);
+        // マップを作成（マップで鳴らすBGM番号を渡す）
+        maps = new Map[2];
+        // 王の間
+        maps[0] = new Map("map/king_room.map", "event/king_room.evt", 0, this);
+        // フィールド
+        maps[1] = new Map("map/field.map", "event/field.evt", 1, this);
+
+        // 最初は王の間
+        mapNo = 0;
 
         // 勇者を作成
-        hero = new Chara(4, 4, 0, DOWN, 0, map);
+        hero = new Chara(4, 4, 0, DOWN, 0, maps[mapNo]);
 
         // マップにキャラクターを登録
         // キャラクターはマップに属す
-        map.addChara(hero);
+        maps[mapNo].addChara(hero);
 
         // ウィンドウを追加
         messageWindow = new MessageWindow(WND_RECT);
+
+        // サウンドをロード
+        loadSound();
+
+        // マップに割り当てられたBGMを再生
+        MidiEngine.play(maps[mapNo].getBgmNo());
 
         // ゲームループ開始
         gameLoop = new Thread(this);
@@ -91,17 +114,17 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
         int offsetX = MainPanel.WIDTH / 2 - hero.getPx();
         // マップの端ではスクロールしないようにする
         offsetX = Math.min(offsetX, 0);
-        offsetX = Math.max(offsetX, MainPanel.WIDTH - map.getWidth());
+        offsetX = Math.max(offsetX, MainPanel.WIDTH - maps[mapNo].getWidth());
 
         // Y方向のオフセットを計算
         int offsetY = MainPanel.HEIGHT / 2 - hero.getPy();
         // マップの端ではスクロールしないようにする
         offsetY = Math.min(offsetY, 0);
-        offsetY = Math.max(offsetY, MainPanel.HEIGHT - map.getHeight());
+        offsetY = Math.max(offsetY, MainPanel.HEIGHT - maps[mapNo].getHeight());
 
         // マップを描く
         // キャラクターはマップが描いてくれる
-        map.draw(g, offsetX, offsetY);
+        maps[mapNo].draw(g, offsetX, offsetY);
 
         // メッセージウィンドウを描画
         messageWindow.draw(g);
@@ -174,8 +197,17 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
                 messageWindow.show();
                 // TODO: ここにアイテム入手処理を入れる
                 // 宝箱を削除
-                map.removeEvent(treasure);
+                maps[mapNo].removeEvent(treasure);
                 return;  // しらべた場合ははなさない
+            }
+
+            // とびら
+            DoorEvent door = hero.open();
+            if (door != null) {
+                // ドアを削除
+                maps[mapNo].removeEvent(door);
+
+                return;
             }
 
             // はなす
@@ -213,6 +245,23 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
         if (hero.isMoving()) {
             if (hero.move()) {  // 移動（スクロール）
                 // 移動が完了した後の処理はここに書く
+
+                // 移動イベント
+                // イベントがあるかチェック
+                Event event = maps[mapNo].eventCheck(hero.getX(), hero.getY());
+                if (event instanceof MoveEvent) {  // 移動イベントなら
+                    MoveEvent m = (MoveEvent)event;
+                    // 移動元マップの勇者を消去
+                    maps[mapNo].removeChara(hero);
+                    // 現在のマップ番号に移動先のマップ番号を設定
+                    mapNo = m.destMapNo;
+                    // 移動先マップでの座標を取得して勇者を作り直す
+                    hero = new Chara(m.destX, m.destY, 0, DOWN, 0, maps[mapNo]);
+                    // 移動先マップに勇者を登録
+                    maps[mapNo].addChara(hero);
+                    // 移動先マップのBGMを鳴らす
+                    MidiEngine.play(maps[mapNo].getBgmNo());
+                }
             }
         }
     }
@@ -222,7 +271,7 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
      */
     private void charaMove() {
         // マップにいるキャラクターを取得
-        Vector charas = map.getCharas();
+        Vector charas = maps[mapNo].getCharas();
         for (int i=0; i<charas.size(); i++) {
             Chara chara = (Chara)charas.get(i);
             // キャラクターの移動タイプを調べる
@@ -290,5 +339,23 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
     }
 
     public void keyTyped(KeyEvent e) {
+    }
+
+    /**
+     * サウンドをロードする
+     */
+    private void loadSound() {
+        // BGMをロード
+        for (int i=0; i<bgmNames.length; i++) {
+            try {
+                MidiEngine.load("bgm/" + bgmNames[i]);
+            } catch (MidiUnavailableException e) {
+                e.printStackTrace();
+            } catch (InvalidMidiDataException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
