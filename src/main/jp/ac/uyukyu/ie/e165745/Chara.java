@@ -1,12 +1,13 @@
 package main.jp.ac.uyukyu.ie.e165745;
 
-/**
+/*
  * Created by e165745 on 2017/02/01.
  */
 import java.awt.Graphics;
-import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 
-import javax.swing.ImageIcon;
+import javax.imageio.ImageIO;
 
 /*
  * Created on 2005/10/10
@@ -25,7 +26,7 @@ public class Chara implements Common {
     public static final double PROB_MOVE = 0.02;
 
     // イメージ
-    private static Image charaImage;
+    private static BufferedImage charaImage;
 
     // キャラクター番号
     private int charaNo;
@@ -373,8 +374,11 @@ public class Chara implements Common {
 
     private void loadImage() {
         // キャラクターのイメージをロード
-        ImageIcon icon = new ImageIcon(getClass().getResource("image/chara.gif"));
-        charaImage = icon.getImage();
+        try {
+            charaImage = ImageIO.read(getClass().getResource("image/chara.gif"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public int getX() {

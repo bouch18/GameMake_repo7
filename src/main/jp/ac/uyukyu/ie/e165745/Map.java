@@ -1,16 +1,17 @@
 package main.jp.ac.uyukyu.ie.e165745;
 
-/**
+/*
  * Created by e165745 on 2017/02/01.
- */
+  */
 import java.awt.Graphics;
-import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
-import javax.swing.ImageIcon;
+import javax.imageio.ImageIO;
 
 /*
  * Created on 2006/5/5
@@ -33,7 +34,7 @@ public class Map implements Common {
     private int width;
     private int height;
 
-    private static Image chipImage;
+    private static BufferedImage chipImage;
 
     // このマップにいるキャラクターたち
     private Vector charas = new Vector();
@@ -43,18 +44,23 @@ public class Map implements Common {
     // メインパネルへの参照
     private MainPanel panel;
 
-    // BGM番号
-    private int bgmNo;
+    // マップファイル名
+    private String mapFile;
+
+    // BGM名
+    private String bgmName;
 
     /**
      * コンストラクタ
+     *
      * @param mapFile マップファイル名
      * @param eventFile イベントファイル名
      * @param bgmNo BGM番号
      * @param panel パネルへの参照
      */
-    public Map(String mapFile, String eventFile, int bgmNo, MainPanel panel) {
-        this.bgmNo = bgmNo;
+    public Map(String mapFile, String eventFile, String bgmName, MainPanel panel) {
+        this.mapFile = mapFile;
+        this.bgmName = bgmName;
 
         // マップをロード
         load(mapFile);
@@ -87,42 +93,47 @@ public class Map implements Common {
                 // マップチップイメージは8x8を想定
                 int cx = (mapChipNo % 8) * CS;
                 int cy = (mapChipNo / 8) * CS;
-                g.drawImage(chipImage, tilesToPixels(j) + offsetX, tilesToPixels(i) + offsetY,
-                        tilesToPixels(j) + offsetX + CS, tilesToPixels(i) + offsetY + CS,
-                        cx, cy, cx + CS, cy + CS, panel);
+                g.drawImage(chipImage, tilesToPixels(j) + offsetX,
+                        tilesToPixels(i) + offsetY, tilesToPixels(j) + offsetX
+                                + CS, tilesToPixels(i) + offsetY + CS, cx, cy,
+                        cx + CS, cy + CS, panel);
 
                 // (j, i) にあるイベントを描画
-                for (int n=0; n<events.size(); n++) {
-                    Event event = (Event)events.get(n);
+                for (int n = 0; n < events.size(); n++) {
+                    Event event = (Event) events.get(n);
                     // イベントが(j, i)にあれば描画
                     if (event.x == j && event.y == i) {
                         mapChipNo = event.chipNo;
                         cx = (mapChipNo % 8) * CS;
                         cy = (mapChipNo / 8) * CS;
-                        g.drawImage(chipImage, tilesToPixels(j) + offsetX, tilesToPixels(i) + offsetY,
-                                tilesToPixels(j) + offsetX + CS, tilesToPixels(i) + offsetY + CS,
-                                cx, cy, cx + CS, cy + CS, panel);
+                        g.drawImage(chipImage, tilesToPixels(j) + offsetX,
+                                tilesToPixels(i) + offsetY, tilesToPixels(j)
+                                        + offsetX + CS, tilesToPixels(i)
+                                        + offsetY + CS, cx, cy, cx + CS, cy
+                                        + CS, panel);
                     }
                 }
             }
         }
 
         // このマップにいるキャラクターを描画
-        for (int n=0; n<charas.size(); n++) {
-            Chara chara = (Chara)charas.get(n);
+        for (int n = 0; n < charas.size(); n++) {
+            Chara chara = (Chara) charas.get(n);
             chara.draw(g, offsetX, offsetY);
         }
     }
 
     /**
      * (x,y)にぶつかるものがあるか調べる。
+     *
      * @param x マップのx座標
      * @param y マップのy座標
      * @return (x,y)にぶつかるものがあったらtrueを返す。
      */
     public boolean isHit(int x, int y) {
         // (x,y)に壁か玉座か海かカウンターがあったらぶつかる
-        if (map[y][x] == 1 || map[y][x] == 2 || map[y][x] == 5 || map[y][x] == 19) {
+        if (map[y][x] == 1 || map[y][x] == 2 || map[y][x] == 5
+                || map[y][x] == 19) {
             return true;
         }
 
@@ -136,7 +147,7 @@ public class Map implements Common {
 
         // ぶつかるイベントがあるか
         for (int i = 0; i < events.size(); i++) {
-            Event event = (Event)events.get(i);
+            Event event = (Event) events.get(i);
             if (event.x == x && event.y == y) {
                 return event.isHit;
             }
@@ -148,6 +159,7 @@ public class Map implements Common {
 
     /**
      * キャラクターをこのマップに追加する
+     *
      * @param chara キャラクター
      */
     public void addChara(Chara chara) {
@@ -156,6 +168,7 @@ public class Map implements Common {
 
     /**
      * キャラクターをこのマップから削除する
+     *
      * @param chara キャラクター
      */
     public void removeChara(Chara chara) {
@@ -164,13 +177,14 @@ public class Map implements Common {
 
     /**
      * (x,y)にキャラクターがいるか調べる
+     *
      * @param x X座標
      * @param y Y座標
      * @return (x,y)にいるキャラクター、いなかったらnull
      */
     public Chara charaCheck(int x, int y) {
-        for (int i=0; i<charas.size(); i++) {
-            Chara chara = (Chara)charas.get(i);
+        for (int i = 0; i < charas.size(); i++) {
+            Chara chara = (Chara) charas.get(i);
             if (chara.getX() == x && chara.getY() == y) {
                 return chara;
             }
@@ -181,13 +195,14 @@ public class Map implements Common {
 
     /**
      * (x,y)にイベントがあるか調べる
+     *
      * @param x X座標
      * @param y Y座標
      * @return (x,y)にいるイベント、いなかったらnull
      */
     public Event eventCheck(int x, int y) {
-        for (int i=0; i<events.size(); i++) {
-            Event event = (Event)events.get(i);
+        for (int i = 0; i < events.size(); i++) {
+            Event event = (Event) events.get(i);
             if (event.x == x && event.y == y) {
                 return event;
             }
@@ -198,6 +213,7 @@ public class Map implements Common {
 
     /**
      * 登録されているイベントを削除する
+     *
      * @param event 削除したいイベント
      */
     public void removeEvent(Event event) {
@@ -206,15 +222,17 @@ public class Map implements Common {
 
     /**
      * ピクセル単位をマス単位に変更する
+     *
      * @param pixels ピクセル単位
      * @return マス単位
      */
     public static int pixelsToTiles(double pixels) {
-        return (int)Math.floor(pixels / CS);
+        return (int) Math.floor(pixels / CS);
     }
 
     /**
      * マス単位をピクセル単位に変更する
+     *
      * @param tiles マス単位
      * @return ピクセル単位
      */
@@ -244,12 +262,13 @@ public class Map implements Common {
 
     /**
      * ファイルからマップを読み込む
+     *
      * @param filename 読み込むマップデータのファイル名
      */
     private void load(String filename) {
         try {
-            BufferedReader br = new BufferedReader(
-                    new InputStreamReader(getClass().getResourceAsStream(filename)));
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                    getClass().getResourceAsStream(filename)));
             // rowを読み込む
             String line = br.readLine();
             row = Integer.parseInt(line);
@@ -261,13 +280,13 @@ public class Map implements Common {
             height = row * CS;
             // マップを作成
             map = new int[row][col];
-            for (int i=0; i<row; i++) {
+            for (int i = 0; i < row; i++) {
                 line = br.readLine();
-                for (int j=0; j<col; j++) {
+                for (int j = 0; j < col; j++) {
                     map[i][j] = Integer.parseInt(line.charAt(j) + "");
                 }
             }
-//            show();
+            // show();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -275,6 +294,7 @@ public class Map implements Common {
 
     /**
      * イベントをロードする
+     *
      * @param filename イベントファイル
      */
     private void loadEvent(String filename) {
@@ -284,20 +304,22 @@ public class Map implements Common {
             String line;
             while ((line = br.readLine()) != null) {
                 // 空行は読み飛ばす
-                if (line.equals("")) continue;
+                if (line.equals(""))
+                    continue;
                 // コメント行は読み飛ばす
-                if (line.startsWith("#")) continue;
+                if (line.startsWith("#"))
+                    continue;
                 StringTokenizer st = new StringTokenizer(line, ",");
                 // イベント情報を取得する
                 // イベントタイプを取得してイベントごとに処理する
                 String eventType = st.nextToken();
-                if (eventType.equals("CHARA")) {  // キャラクターイベント
+                if (eventType.equals("CHARA")) { // キャラクターイベント
                     makeCharacter(st);
-                } else if (eventType.equals("TREASURE")) {  // 宝箱イベント
+                } else if (eventType.equals("TREASURE")) { // 宝箱イベント
                     makeTreasure(st);
-                } else if (eventType.equals("DOOR")) {  // ドアイベント
+                } else if (eventType.equals("DOOR")) { // ドアイベント
                     makeDoor(st);
-                } else if (eventType.equals("MOVE")) {  // 移動イベント
+                } else if (eventType.equals("MOVE")) { // 移動イベント
                     makeMove(st);
                 }
             }
@@ -308,8 +330,11 @@ public class Map implements Common {
 
     private void loadImage() {
         // マップチップのイメージをロード
-        ImageIcon icon = new ImageIcon(getClass().getResource("image/mapchip.gif"));
-        chipImage = icon.getImage();
+        try {
+            chipImage = ImageIO.read(getClass().getResource("image/mapchip.gif"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -388,8 +413,8 @@ public class Map implements Common {
      * マップをコンソールに表示。デバッグ用。
      */
     public void show() {
-        for (int i=0; i<row; i++) {
-            for (int j=0; j<col; j++) {
+        for (int i = 0; i < row; i++) {
+            for (int j = 0; j < col; j++) {
                 System.out.print(map[i][j]);
             }
             System.out.println();
@@ -397,10 +422,15 @@ public class Map implements Common {
     }
 
     /**
-     * このマップのBGM番号を返す
-     * @return BGM番号
+     * このマップのBGM名を返す
+     *
+     * @return BGM名
      */
-    public int getBgmNo() {
-        return bgmNo;
+    public String getBgmName() {
+        return bgmName;
+    }
+
+    public String getMapName() {
+        return mapFile;
     }
 }

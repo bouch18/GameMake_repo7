@@ -1,129 +1,175 @@
 package main.jp.ac.uyukyu.ie.e165745;
 
-/**
+/*
  * Created by e165745 on 2017/02/03.
- */
+  */
 import java.io.IOException;
-import java.net.URL;
+import java.util.HashMap;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
+import javax.sound.midi.Synthesizer;
+import javax.sound.midi.Transmitter;
 
 /*
- * Created on 2005/08/15
- *
+ * Created on 2006/11/05
  */
 
-/**
- * @author mori
- *
- */
-public class MidiEngine {
+class MidiEngine implements MetaEventListener {
+    // 再生終了メタイベント
+    private static final int END_OF_TRACK = 47;
+
+    // シーケンサー
+    private Sequencer sequencer;
+    // シンセサイザー
+    private Synthesizer synthesizer;
+
     // 登録できるMIDIファイルの最大数
-    private static final int MAX_SEQUENCE = 256;
-    // MIDIメタイベント
-    private static final int END_OF_TRACK_MESSAGE = 47;
+    private int maxSequences;
+    // MIDIファイルデータ（名前->Sequence）
+    private HashMap midiMap;
+    // 登録されているMIDIファイル数
+    private int counter = 0;
 
-    // MIDIシーケンス
-    private static Sequence[] sequences = new Sequence[MAX_SEQUENCE];
-    // MIDIシーケンサ
-    private static Sequencer sequencer;
-
-    // 登録されたMIDIファイルの数
-    private static int counter = 0;
-
-    // 再生中のMIDIシーケンスの登録番号
-    private static int playSequenceNo = -1;
-
-    // MIDIシーケンスの開始地点
-    private static long startTick = 0;
+    // 現在再生中のMIDIシーケンス名
+    String currentSequenceName = "";
 
     /**
-     * MIDIファイルをロード
-     * @param url MIDIファイルのURL
+     * コンストラクタ
      */
-    public static void load(URL url) throws MidiUnavailableException, InvalidMidiDataException, IOException {
-        if (sequencer == null) {
-            // シーケンサを取得
-            sequencer = MidiSystem.getSequencer();
+    MidiEngine() {
+        this(256);
+    }
+
+    /**
+     * コンストラクタ
+     *
+     * @param maxSequences
+     *            登録できるMIDIファイルの最大数
+     */
+    MidiEngine(int maxSequences) {
+        this.maxSequences = maxSequences;
+        midiMap = new HashMap(maxSequences);
+
+        // シーケンサーとシンセサイザーを初期化
+        initSequencer();
+    }
+
+    private void initSequencer() {
+        try {
             // シーケンサを開く
+            sequencer = MidiSystem.getSequencer();
             sequencer.open();
             // メタイベントリスナーを登録
-            sequencer.addMetaEventListener(new MyMetaEventListener());
+            sequencer.addMetaEventListener(this);
+            // シーケンサとシンセサイザーの接続
+            if (!(sequencer instanceof Synthesizer)) { // J2SE 5.0用
+                // シンセサイザーを開く
+                synthesizer = MidiSystem.getSynthesizer();
+                synthesizer.open();
+                Receiver synthReceiver = synthesizer.getReceiver();
+                Transmitter seqTransmitter = sequencer.getTransmitter();
+                seqTransmitter.setReceiver(synthReceiver);
+            } else { // J2SE 1.4.2以前
+                // シーケンサとシンセサイザーは同じ
+                synthesizer = (Synthesizer) sequencer;
+            }
+        } catch (MidiUnavailableException e) {
+            e.printStackTrace();
         }
-
-        // MIDIシーケンスを登録
-        sequences[counter] = MidiSystem.getSequence(url);
-
-        counter++;
     }
 
     /**
      * MIDIファイルをロード
-     * @param filename MIDIファイル名
+     *
+     * @param name
+     *            登録名
+     * @param filename
+     *            ファイル名
      */
-    public static void load(String filename) throws MidiUnavailableException, InvalidMidiDataException, IOException {
-        URL url = MidiEngine.class.getResource(filename);
-        load(url);
+    void load(String name, String filename) {
+        if (counter == maxSequences) {
+            System.out.println("エラー: これ以上登録できません");
+            return;
+        }
+
+        try {
+            // MIDIファイルをロード
+            Sequence seq = MidiSystem.getSequence(getClass().getResource(
+                    filename));
+            // 登録
+            midiMap.put(name, seq);
+        } catch (InvalidMidiDataException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
-     * 再生開始
-     * @param no 登録番号
+     * 再生
+     *
+     * @param name
+     *            登録名
      */
-    public static void play(int no) {
-        // 登録されてなければ何もしない
-        if (sequences[no] == null) {
+    void play(String name) {
+        // 現在再生中のシーケンスと同名なら何もしない
+        if (currentSequenceName.equals(name)) {
             return;
         }
 
-        // 現在再生中のMIDIファイルと同じ場合は何もしない
-        if (playSequenceNo == no) {
-            return;
-        }
-
-        // 別のMIDIシーケンスを再生する場合は
         // 現在再生中のシーケンスを停止する
         stop();
 
-        try {
-            // シーケンサにMIDIシーケンスをセット
-            sequencer.setSequence(sequences[no]);
-            // 登録番号を記憶
-            playSequenceNo = no;
-            // MIDIシーケンサのスタート地点を記録（ループできるように）
-            startTick = sequencer.getMicrosecondPosition();
-            // 再生開始
-            sequencer.start();
-        } catch (InvalidMidiDataException e) {
-            e.printStackTrace();
+        // 名前に対応するMIDIを取得
+        Sequence seq = (Sequence)midiMap.get(name);  // MIDIシーケンス
+        if (sequencer != null && seq != null) {
+            try {
+                sequencer.setSequence(seq);  // シーケンサにセット
+                sequencer.start();  // 再生開始！
+                currentSequenceName = name;
+            } catch (InvalidMidiDataException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     /**
      * 停止
      */
-    public static void stop() {
+    public void stop() {
         if (sequencer.isRunning()) {
             sequencer.stop();
         }
     }
 
-    // メタイベントリスナー（ループ再生のため）
-    private static class MyMetaEventListener implements MetaEventListener {
-        public void meta(MetaMessage meta) {
-            if (meta.getType() == END_OF_TRACK_MESSAGE) {
-                if (sequencer != null && sequencer.isOpen()) {
-                    // MIDIシーケンス再生位置を最初に戻す
-                    sequencer.setMicrosecondPosition(startTick);
-                    // 最初から再生
-                    sequencer.start();
-                }
+    /**
+     * 終了処理
+     */
+    public void close() {
+        // 再生中のシーケンスを停止する
+        stop();
+
+        // シーケンサの終了処理
+        sequencer.removeMetaEventListener(this);
+        sequencer.close();
+        sequencer = null;
+    }
+
+    public void meta(MetaMessage meta) {
+        // 再生が終了した場合
+        if (meta.getType() == END_OF_TRACK) {
+            if (sequencer != null && sequencer.isOpen()) {
+                // MIDIシーケンス再生位置に戻す
+                sequencer.setMicrosecondPosition(0);
+                // 最初から再生
+                sequencer.start();
             }
         }
     }

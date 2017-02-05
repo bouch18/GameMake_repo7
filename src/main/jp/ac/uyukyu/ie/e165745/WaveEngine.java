@@ -1,143 +1,126 @@
 package main.jp.ac.uyukyu.ie.e165745;
 
-/**
+/*
  * Created by e165745 on 2017/02/03.
  * */
 import java.io.IOException;
-import java.net.URL;
+import java.util.HashMap;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineEvent;
+import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 /*
- * Created on 2005/08/15
- *
+ * Created on 2006/11/05
  */
 
-/**
- * @author mori
- *
- */
-public class WaveEngine {
+class WaveEngine implements LineListener {
     // 登録できるWAVEファイルの最大数
-    private static final int MAX_CLIPS = 256;
-
-    // WAVEファイルデータ
-    private static DataClip[] clips = new DataClip[MAX_CLIPS];
-    // ライン（オーディオデータを再生する経路）
-    private static SourceDataLine[] lines = new SourceDataLine[MAX_CLIPS];
+    private int maxClips;
+    // WAVEファイルデータ（名前->データ本体）
+    private HashMap clipMap;
     // 登録されたWAVEファイル数
-    private static int counter = 0;
-
-    private static long last;
+    private int counter = 0;
 
     /**
-     * WAVEファイルをロード
-     * @param url WAVEファイルのURL
+     * コンストラクタ
      */
-    public static void load(URL url) throws UnsupportedAudioFileException, IOException, LineUnavailableException {
-        // オーディオストリームを開く
-        AudioInputStream ais = AudioSystem.getAudioInputStream(url);
-        // WAVEファイルのフォーマットを取得
-        AudioFormat format = ais.getFormat();
-        // ラインを取得
-        DataLine.Info info = new DataLine.Info(SourceDataLine.class, format, AudioSystem.NOT_SPECIFIED);
+    WaveEngine() {
+        this(256);
+    }
 
-        // WAVEデータを取得
-        DataClip clip = new DataClip(ais);
-
-        // WAVEデータを登録
-        clips[counter] = clip;
-        lines[counter] = (SourceDataLine)AudioSystem.getLine(info);
-
-        // ラインを開く
-        lines[counter].open(format);
-
-        counter++;
+    /**
+     * コンストラクタ
+     *
+     * @param maxClips
+     *            登録できるWAVEファイルの最大数
+     */
+    WaveEngine(int maxClips) {
+        this.maxClips = maxClips;
+        clipMap = new HashMap(maxClips);
     }
 
     /**
      * WAVEファイルをロード
-     * @param filename WAVEファイル名
+     * @param name 登録名
+     * @param filename ファイル名
      */
-    public static void load(String filename) throws UnsupportedAudioFileException, IOException, LineUnavailableException {
-        URL url = WaveEngine.class.getResource(filename);
-        load(url);
-    }
-
-    /**
-     * 再生開始、鳴らすにはゲームループでrender()が必要
-     * @param no 再生するDataClipの番号
-     */
-    public static void play(int no) {
-        if (clips[no] == null) {
+    void load(String name, String filename) {
+        if (counter == maxClips) {
+            System.out.println("エラー: これ以上登録できません");
             return;
         }
 
-        clips[no].index = 0;
-        clips[no].running = true;
+        try {
+            // オーディオストリームを開く
+            AudioInputStream stream = AudioSystem
+                    .getAudioInputStream(getClass().getResource(filename));
 
-        // ラインを掃除
-        lines[no].flush();
-        // ラインを開始
-        lines[no].start();
-    }
+            // オーディオ形式を取得
+            AudioFormat format = stream.getFormat();
+            // ULAW/ALAW形式の場合はPCM形式に変更
+            if ((format.getEncoding() == AudioFormat.Encoding.ULAW)
+                    || (format.getEncoding() == AudioFormat.Encoding.ALAW)) {
+                AudioFormat newFormat = new AudioFormat(
+                        AudioFormat.Encoding.PCM_SIGNED,
+                        format.getSampleRate(),
+                        format.getSampleSizeInBits() * 2, format.getChannels(),
+                        format.getFrameSize() * 2, format.getFrameRate(), true);
+                stream = AudioSystem.getAudioInputStream(newFormat, stream);
+                format = newFormat;
+            }
 
-    /**
-     * 停止
-     * @param no 停止するDataClipの番号
-     */
-    public static void stop(int no) {
-        if (clips[no] == null) {
-            return;
+            // ライン情報を取得
+            DataLine.Info info = new DataLine.Info(Clip.class, format);
+            // サポートされてる形式かチェック
+            if (!AudioSystem.isLineSupported(info)) {
+                System.out.println("エラー: " + filename + "はサポートされていない形式です");
+                System.exit(0);
+            }
+
+            // 空のクリップを作成
+            Clip clip = (Clip) AudioSystem.getLine(info);
+            // クリップのイベントを監視
+            clip.addLineListener(this);
+            // オーディオストリームをクリップとして開く
+            clip.open(stream);
+            // クリップを登録
+            clipMap.put(name, clip);
+            // ストリームを閉じる
+            stream.close();
+        } catch (UnsupportedAudioFileException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
         }
-
-        clips[no].running = false;
-
-        // ラインを停止
-        lines[no].stop();
     }
 
     /**
      * 再生
+     * @param name 登録名
      */
-    public static void render() {
-        long current = System.currentTimeMillis();
-        // 前回の呼び出しからの経過時刻
-        int difference = (int)(current - last);
-
-        for (int i=0; i<counter; i++) {
-            // 再生中でないDataClipは飛ばす
-            if (!clips[i].running) {
-                continue;
-            }
-
-            // サンプルレートを計算する
-            clips[i].calculateSampleRate(difference);
-
-            // 1フレームで送信するバイト数を計算する
-            // 残りバイト数の方が小さい場合はそっちを選ぶ
-            int bytes = Math.min(clips[i].sampleRate, clips[i].data.length - clips[i].index);
-
-            if (bytes > 0) {
-                // ラインの再生バッファにbytesだけデータを書き込む
-                // データを書き込むと再生される
-                lines[i].write(clips[i].data, clips[i].index, bytes);
-                // 再生したバイト分だけindexをすすめる
-                clips[i].index += bytes;
-            }
-
-            // DataClipを全部再生したら停止
-            if (clips[i].index >= clips[i].data.length) {
-                stop(i);
-            }
+    void play(String name) {
+        // 名前に対応するクリップを取得
+        Clip clip = (Clip)clipMap.get(name);
+        if (clip != null) {
+            clip.start();
         }
+    }
 
-        last = current;
+    public void update(LineEvent event) {
+        // ストップか最後まで再生された場合
+        if (event.getType() == LineEvent.Type.STOP) {
+            Clip clip = (Clip) event.getSource();
+            clip.stop();
+            clip.setFramePosition(0); // 再生位置を最初に戻す
+        }
     }
 }

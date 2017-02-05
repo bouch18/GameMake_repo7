@@ -2,13 +2,13 @@ package main.jp.ac.uyukyu.ie.e165745;
 
 /**
  * Created by e165745 on 2017/02/02.
- */
-public class DoorEvent extends Event {
+  */
+ class DoorEvent extends Event {
     /**
      * @param x X座標
      * @param y Y座標
      */
-    public DoorEvent(int x, int y) {
+    DoorEvent(int x, int y) {
         // とびらのチップ番号は18でぶつかる
         super(x, y, 18, true);
     }
