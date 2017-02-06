@@ -22,7 +22,7 @@ import javax.imageio.ImageIO;
  * @author mori
  *
  */
-public class Map implements Common {
+class Map implements Common {
     // マップ
     private int[][] map;
 
@@ -55,10 +55,10 @@ public class Map implements Common {
      *
      * @param mapFile マップファイル名
      * @param eventFile イベントファイル名
-     * @param bgmNo BGM番号
+     * @param bgmName BGM番号
      * @param panel パネルへの参照
      */
-    public Map(String mapFile, String eventFile, String bgmName, MainPanel panel) {
+    Map(String mapFile, String eventFile, String bgmName, MainPanel panel) {
         this.mapFile = mapFile;
         this.bgmName = bgmName;
 

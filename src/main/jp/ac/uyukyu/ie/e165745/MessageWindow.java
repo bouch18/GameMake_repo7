@@ -7,6 +7,8 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Rectangle;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.swing.ImageIcon;
 /*
@@ -50,9 +52,17 @@ public class MessageWindow {
     private int maxPage;
     // 現在表示しているページ
     private int curPage = 0;
+    // 表示した文字数
+    private int curPos;
+    // 次のページへいけるか（▼が表示されてればtrue）
+    private boolean nextFlag = false;
 
     // メッセージエンジン
     private MessageEngine messageEngine;
+
+    // テキストを流すタイマータスク
+    private Timer timer;
+    private TimerTask task;
 
     public MessageWindow(Rectangle rect) {
         this.rect = rect;
@@ -75,6 +85,8 @@ public class MessageWindow {
         // カーソルイメージをロード
         ImageIcon icon = new ImageIcon(getClass().getResource("image/cursor.gif"));
         cursorImage = icon.getImage();
+
+        timer = new Timer();
     }
 
     public void draw(Graphics g) {
@@ -88,8 +100,8 @@ public class MessageWindow {
         g.setColor(Color.BLACK);
         g.fillRect(innerRect.x, innerRect.y, innerRect.width, innerRect.height);
 
-        // 現在のページ（curPage）の1ページ分の内容を表示
-        for (int i=0; i<MAX_CHAR_IN_PAGE; i++) {
+        // 現在のページ（curPage）のcurPosまでの内容を表示
+        for (int i=0; i<curPos; i++) {
             char c = text[curPage * MAX_CHAR_IN_PAGE + i];
             int dx = textRect.x + MessageEngine.FONT_WIDTH * (i % MAX_CHAR_IN_LINE);
             int dy = textRect.y + (LINE_HEIGHT + MessageEngine.FONT_HEIGHT) * (i / MAX_CHAR_IN_LINE);
@@ -97,7 +109,7 @@ public class MessageWindow {
         }
 
         // 最後のページでない場合は矢印を表示する
-        if (curPage < maxPage) {
+        if (curPage < maxPage && nextFlag) {
             int dx = textRect.x + (MAX_CHAR_IN_LINE / 2) * MessageEngine.FONT_WIDTH - 8;
             int dy = textRect.y + (LINE_HEIGHT + MessageEngine.FONT_HEIGHT) * 3;
             g.drawImage(cursorImage, dx, dy, null);
@@ -109,7 +121,9 @@ public class MessageWindow {
      * @param msg メッセージ
      */
     public void setMessage(String msg) {
+        curPos = 0;
         curPage = 0;
+        nextFlag = false;
 
         // 全角スペースで初期化
         for (int i=0; i<text.length; i++) {
@@ -134,6 +148,10 @@ public class MessageWindow {
         }
 
         maxPage = p / MAX_CHAR_IN_PAGE;
+
+        // 文字を流すタスクを起動
+        task = new DrawingMessageTask();
+        timer.schedule(task, 0L, 20L);
     }
 
     /**
@@ -143,10 +161,16 @@ public class MessageWindow {
     public boolean nextMessage() {
         // 現在ページが最後のページだったらメッセージを終了する
         if (curPage == maxPage) {
+            task.cancel();
+            task = null;  // タスクは終了しないと動き続ける
             return true;
         }
-        curPage++;
-
+        // ▼が表示されてなければ次ページへいけない
+        if (nextFlag) {
+            curPage++;
+            curPos = 0;
+            nextFlag = false;
+        }
         return false;
     }
 
@@ -169,5 +193,18 @@ public class MessageWindow {
      */
     public boolean isVisible() {
         return isVisible;
+    }
+
+    // メッセージを1文字ずつ順に描画するタスク
+    class DrawingMessageTask extends TimerTask {
+        public void run() {
+            if (!nextFlag) {
+                curPos++;  // 1文字増やす
+                // 1ページの文字数になったら▼を表示
+                if (curPos % MAX_CHAR_IN_PAGE == 0) {
+                    nextFlag = true;
+                }
+            }
+        }
     }
 }

@@ -23,7 +23,10 @@ public class Rpg extends JFrame {
 
         // パネルを作成
         MainPanel panel = new MainPanel();
+        //FirstPanel first = new FirstPanel();
         Container contentPane = getContentPane();
+        //contentPane.add(first);
+
         contentPane.add(panel);
 
         // パネルサイズに合わせてフレームサイズを自動設定

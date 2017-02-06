@@ -12,6 +12,8 @@ public class ActionKey {
     // このモードを使うとジャンプボタンを押し続けてもジャンプを繰り返さない
     public static final int DETECT_INITIAL_PRESS_ONLY = 1;
 
+    public static final int DETECT_INITIAL_PRESS_ONLY_2 = 1;
+
     // キーの状態
     // キーが離された
     private static final int STATE_RELEASED = 0;

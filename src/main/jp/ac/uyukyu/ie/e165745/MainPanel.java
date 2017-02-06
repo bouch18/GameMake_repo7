@@ -12,9 +12,11 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.IOException;
 import java.util.Random;
 import java.util.Vector;
 import javax.swing.JPanel;
+
 
 /*
  * Created on 2006/5/5
@@ -50,6 +52,7 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
     private ActionKey upKey;
     private ActionKey downKey;
     private ActionKey spaceKey;
+    private ActionKey xKey;
 
     // ゲームループ
     private Thread gameLoop;
@@ -94,13 +97,14 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
         upKey = new ActionKey();
         downKey = new ActionKey();
         spaceKey = new ActionKey(ActionKey.DETECT_INITIAL_PRESS_ONLY);
+        xKey = new ActionKey(ActionKey.DETECT_INITIAL_PRESS_ONLY);
 
         // マップを作成（マップで鳴らすBGM番号を渡す）
         maps = new Map[2];
         // お城
-        maps[0] = new Map("map/castle.txt", "event/castle.evt", "castle", this);
+        maps[0] = new Map("map/castle.txt", "event/castle.txt", "castle", this);
         // フィールド
-        maps[1] = new Map("map/field.txt", "event/field.evt", "field", this);
+        maps[1] = new Map("map/field.txt", "event/field.txt", "field", this);
 
         // 最初はお城
         mapNo = 0;
@@ -137,8 +141,15 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
             // ゲーム状態を更新
             gameUpdate();
             // レンダリング
-            gameRender();
+
+            try {
+                gameRender();
+            }catch(NullPointerException e){
+                System.out.println(e);
+            }
             // 画面に描画
+
+
             paintScreen();
 
             timeDiff = System.currentTimeMillis() - beforeTime;
@@ -235,7 +246,6 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
 
     /**
      * バッファを画面に描画
-     *
      */
     private void paintScreen() {
         Graphics g = getGraphics();
@@ -322,6 +332,17 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
                 }
             }
         }
+        if (xKey.isPressed()) { // Xキー
+            // 移動中は表示できない
+            if (hero.isMoving())
+                return;
+                if(!messageWindow.isVisible()) {
+                    messageWindow.setMessage("テストおおおお");
+                    messageWindow.show();
+                }
+            }
+        }
+
     }
 
     /**
@@ -411,6 +432,9 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
         if (keyCode == KeyEvent.VK_SPACE) {
             spaceKey.press();
         }
+        if (keyCode == KeyEvent.VK_X){
+            xKey.press();
+        }
     }
 
     /**
@@ -436,6 +460,9 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
         if (keyCode == KeyEvent.VK_SPACE) {
             spaceKey.release();
         }
+        if (keyCode == KeyEvent.VK_X) {
+            xKey.release();
+        }
     }
 
     public void keyTyped(KeyEvent e) {
@@ -446,7 +473,7 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
      */
     private void loadSound() {
         // BGMをロード
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < bgmNames.length; i++) {
             midiEngine.load(bgmNames[i], bgmFiles[i]);
         }
 

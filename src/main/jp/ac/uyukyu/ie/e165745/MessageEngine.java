@@ -1,7 +1,8 @@
 package main.jp.ac.uyukyu.ie.e165745;
 
-/**
+/*
  * Created by e165745 on 2017/02/01.
+ *
  */
 import java.awt.Graphics;
 import java.awt.Image;

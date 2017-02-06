@@ -18,12 +18,12 @@ import javax.imageio.ImageIO;
  * @author mori
  *
  */
-public class Chara implements Common {
+class Chara implements Common {
     // 移動スピード
     private static final int SPEED = 4;
 
     // 移動確率
-    public static final double PROB_MOVE = 0.02;
+    static final double PROB_MOVE = 0.02;
 
     // イメージ
     private static BufferedImage charaImage;
@@ -56,7 +56,7 @@ public class Chara implements Common {
     // マップへの参照
     private Map map;
 
-    public Chara(int x, int y, int charaNo, int direction, int moveType, Map map) {
+    Chara(int x, int y, int charaNo, int direction, int moveType, Map map) {
         this.x = x;
         this.y = y;
 
@@ -79,7 +79,7 @@ public class Chara implements Common {
         threadAnime.start();
     }
 
-    public void draw(Graphics g, int offsetX, int offsetY) {
+    void draw(Graphics g, int offsetX, int offsetY) {
         int cx = (charaNo % 8) * (CS * 2);
         int cy = (charaNo / 8) * (CS * 4);
         // countとdirectionの値に応じて表示する画像を切り替える
@@ -91,7 +91,7 @@ public class Chara implements Common {
      * 移動処理。
      * @return 1マス移動が完了したらtrueを返す。移動中はfalseを返す。
      */
-    public boolean move() {
+    boolean move() {
         switch (direction) {
             case LEFT:
                 if (moveLeft()) {
@@ -278,7 +278,7 @@ public class Chara implements Common {
      * キャラクターが向いている方向のとなりにキャラクターがいるか調べる
      * @return キャラクターがいたらそのCharaオブジェクトを返す
      */
-    public Chara talkWith() {
+    Chara talkWith() {
         int nextX = 0;
         int nextY = 0;
         // キャラクターの向いている方向の1歩となりの座標
@@ -328,7 +328,7 @@ public class Chara implements Common {
      * あしもとに宝箱があるか調べる
      * @return あしもとにあるTreasureEventオブジェクト
      */
-    public TreasureEvent search() {
+    TreasureEvent search() {
         Event event = map.eventCheck(x, y);
         if (event instanceof TreasureEvent) {
             return (TreasureEvent)event;
@@ -341,7 +341,7 @@ public class Chara implements Common {
      * 目の前にドアがあるか調べる
      * @return 目の前にあるDoorEventオブジェクト
      */
-    public DoorEvent open() {
+    DoorEvent open() {
         int nextX = 0;
         int nextY = 0;
         // キャラクターの向いている方向の1歩となりの座標
@@ -385,27 +385,27 @@ public class Chara implements Common {
         return x;
     }
 
-    public int getY() {
+    int getY() {
         return y;
     }
 
-    public int getPx() {
+    int getPx() {
         return px;
     }
 
-    public int getPy() {
+    int getPy() {
         return py;
     }
 
-    public void setDirection(int dir) {
+    void setDirection(int dir) {
         direction = dir;
     }
 
-    public boolean isMoving() {
+    boolean isMoving() {
         return isMoving;
     }
 
-    public void setMoving(boolean flag) {
+    void setMoving(boolean flag) {
         isMoving = flag;
         // 移動距離を初期化
         movingLength = 0;
@@ -415,7 +415,7 @@ public class Chara implements Common {
      * キャラクターのメッセージを返す
      * @return メッセージ
      */
-    public String getMessage() {
+    String getMessage() {
         return message;
     }
 
@@ -423,11 +423,11 @@ public class Chara implements Common {
      * キャラクターのメッセージを返す
      * @param message メッセージ
      */
-    public void setMessage(String message) {
+    void setMessage(String message) {
         this.message = message;
     }
 
-    public int getMoveType() {
+    int getMoveType() {
         return moveType;
     }
 
