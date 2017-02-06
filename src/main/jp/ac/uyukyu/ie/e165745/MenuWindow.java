@@ -86,7 +86,7 @@ public class MenuWindow {
         maxPage = p / MAX_CHAR_IN_PAGE;
 
         // 文字を流すタスクを起動
-        task = new MessageWindow.DrawingMessageTask();
+        //task = new MessageWindow.DrawingMessageTask();
         timer.schedule(task, 0L, 20L);
 
 

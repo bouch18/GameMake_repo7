@@ -343,7 +343,7 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
             }
         }
 
-    }
+
 
     /**
      * メッセージウィンドウでのキー入力をチェックする

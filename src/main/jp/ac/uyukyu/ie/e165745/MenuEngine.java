@@ -20,10 +20,10 @@ public class MenuEngine {
     // フォントイメージ
     private Image fontImage;
     // かな→座標のハッシュ
-    private HashMap kana2Pos;
+    //private HashMap kana2Pos;
 
     // フォントイメージ
-    private Image fontImage;
+    //private Image fontImage;
     // かな→座標のハッシュ
     private HashMap kana2Pos;
 
