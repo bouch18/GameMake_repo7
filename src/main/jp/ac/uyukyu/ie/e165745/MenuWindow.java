@@ -1,14 +1,10 @@
 package main.jp.ac.uyukyu.ie.e165745;
 
-import java.awt.*;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Image;
+
 import java.awt.Rectangle;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import javax.swing.ImageIcon;
 
 /**
  * Created by e165745 on 2017/02/06.
@@ -35,19 +31,11 @@ public class MenuWindow {
     // メッセージウィンドウを表示中か
     private boolean isVisible = false;
 
-    // カーソルのアニメーションGIF
-    private Image cursorImage;
+
 
     // メッセージを格納した配列
     private char[] text = new char[128 * MAX_CHAR_IN_LINE];
-    // 最大ページ
-    private int maxPage;
-    // 現在表示しているページ
-    private int curPage = 0;
-    // 表示した文字数
-    private int curPos;
-    // 次のページへいけるか（▼が表示されてればtrue）
-    private boolean nextFlag = false;
+
 
     // メッセージエンジン
     private MessageEngine messageEngine;
@@ -58,9 +46,7 @@ public class MenuWindow {
 
     void setMessage(String msg) {
         if (isVisible == false) return;
-        curPos = 0;
-        curPage = 0;
-        nextFlag = false;
+
 
         // 全角スペースで初期化
         for (int i=0; i<text.length; i++) {
@@ -83,7 +69,7 @@ public class MenuWindow {
             }
         }
 
-        maxPage = p / MAX_CHAR_IN_PAGE;
+
 
         // 文字を流すタスクを起動
         //task = new MessageWindow.DrawingMessageTask();

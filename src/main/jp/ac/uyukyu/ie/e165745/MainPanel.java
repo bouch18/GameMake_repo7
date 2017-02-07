@@ -337,7 +337,7 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
             if (hero.isMoving())
                 return;
                 if(!messageWindow.isVisible()) {
-                    messageWindow.setMessage("テストおおおお");
+                    messageWindow.setMessage("メニュー");
                     messageWindow.show();
                 }
             }
@@ -482,4 +482,5 @@ class MainPanel extends JPanel implements KeyListener, Runnable, Common {
             waveEngine.load(soundNames[i], soundFiles[i]);
         }
     }
+
 }
